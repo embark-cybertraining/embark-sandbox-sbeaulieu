@@ -1,0 +1,87 @@
+---
+title: Let's find data in the California Current Large Marine Ecosystem
+An R Markdown document converted from "https://github.com/seagrinch/embark-scratch-notebooks/blob/main/edi_obis_visualization.ipynb"
+using rmarkdown::convert_ipynb
+output: html_document
+---
+
+```{r}
+# This notebook will access data directly from two repositories: the Environmental Data Initiative (EDI) and the Ocean Biodiversity Information System (OBIS).
+
+# install packages from CRAN if necessary
+library(robis)
+library(dplyr)
+library(leaflet)
+```
+
+```{r}
+# Access EDI data
+# initate citation https://doi.org/10.6073/pasta/9feb1de01eb3795e7ea39a8b7ba325e6
+# license CC0
+inUrl1  <- "https://pasta.lternet.edu/package/data/eml/knb-lter-cce/104/13/01cc01e9b988aea447b1dd417eca7938"
+df_from_edi <- read.csv(inUrl1)
+```
+
+```{r}
+# Transform data
+df_renamed <- rename(df_from_edi, lng = 'Longitude..º.', lat = 'Latitude..º.')
+```
+
+```{r}
+# Visualize data
+leaflet(df_renamed) %>%
+  addTiles() %>%
+  addCircleMarkers(~lng, ~lat, color = "blue", radius = 5) %>%
+  setView(lng = -123, lat = 37, zoom = 5) # Center over California Current
+```
+
+```{r}
+# Access OBIS data for particular species and particular area
+# manually choose areaid by executing request URL at https://api.obis.org/#/Area/get_area__id_
+# { id: "40003", name: "California Current", type: "lme" }
+records <- occurrence(scientificname = "Pyrosoma atlanticum", areaid = 40003)
+```
+
+```{r}
+# Inspect data/metadata
+# manually confirm this is expected species in World Register of Marine Species
+unique(records$aphiaID)
+```
+
+```{r}
+# Visualize locations for OBIS data
+map_leaflet(records)
+```
+
+```{r}
+# what datasets yielded records?
+# note: if datasetName results in any NA, then this field was not populated for all records (we'll use dataset_id next)
+# manually inspect these datasets by searching for Dataset at the following URL
+# https://obis.org/search?entity=dataset
+unique(records$datasetName)
+```
+
+```{r}
+# this field should be populated for all records
+# to link directly to dataset(s)
+# replace the xxxx in the following URL with the unique dataset_idID(s)
+# https://obis.org/dataset/xxxx
+unique(records$dataset_id)
+```
+
+```{r}
+# Visualize data from EDI and OBIS sources
+leaflet(df_renamed) %>%
+  addTiles() %>%
+  addCircleMarkers(~lng, ~lat, color = "blue", radius = 5) %>%
+ addCircleMarkers(
+    data = records,
+    lng = ~decimalLongitude,
+    lat = ~decimalLatitude,
+    color = "red",
+    radius = 4,
+    popup = ~scientificName
+  ) %>%
+  setView(lng = -123, lat = 37, zoom = 5) # Center over California Current
+```
+
